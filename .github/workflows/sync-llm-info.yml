@@ -37,12 +37,17 @@ jobs:
           doppler-project: marimo-oss
           doppler-config: ci_deploy
 
+      # Scope the token to `contents: write`, which is all this workflow uses it
+      # for (checkout, then pushing the update branch). The update PR itself is
+      # opened with the default GITHUB_TOKEN. Without an explicit `permission-*`
+      # input the token inherits every permission the App installation holds.
       - name: Generate app token
         id: app-token
         uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
         with:
           app-id: ${{ vars.RELEASE_APP_ID }}
           private-key: ${{ steps.secrets.outputs.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
 
       - name: ⬇️ Checkout repo
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4

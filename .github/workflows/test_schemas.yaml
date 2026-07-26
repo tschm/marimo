@@ -11,9 +11,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# `pull-requests: write` is granted per-job rather than workflow-wide: only
+# check-schemas comments on the PR.
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   changes:
@@ -45,6 +46,9 @@ jobs:
   check-schemas:
     needs: changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # "Comment on PR" step below
     strategy:
       matrix:
         schema:

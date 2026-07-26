@@ -10,6 +10,16 @@ concurrency:
   cancel-in-progress: false  # Don't cancel CLA checks
 
 # explicitly configure permissions, in case your GITHUB_TOKEN workflow permissions are set to read-only in repository settings
+#
+# NB: this workflow runs on `pull_request_target`, so it has write access and
+# secrets while a fork PR is the triggering event. It deliberately performs no
+# `actions/checkout`, so untrusted PR code is never executed here — that is the
+# property that makes the trigger safe, and it must be preserved.
+#
+# NB: `contributor-assistant/github-action` is archived upstream and will not
+# receive security fixes. The permission set below is the one its README
+# prescribes, so it cannot be narrowed without testing against the action's
+# behavior. Migrating off it is tracked separately.
 permissions:
   actions: write
   contents: write

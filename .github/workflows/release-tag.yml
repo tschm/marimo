@@ -40,12 +40,17 @@ jobs:
 
       # Use a GitHub App token so the tag push triggers other workflows.
       # Tags pushed with the default GITHUB_TOKEN do not trigger workflows.
+      #
+      # Scope the token to `contents: write` (checkout + tag push). Without an
+      # explicit `permission-*` input the token inherits every permission the
+      # App installation holds.
       - name: Generate app token
         id: app-token
         uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
         with:
           app-id: ${{ vars.RELEASE_APP_ID }}
           private-key: ${{ steps.secrets.outputs.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
 
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4

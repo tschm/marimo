@@ -30,19 +30,29 @@ runs:
         cp frontend/public/favicon.ico marimo/_static/favicon.ico
 
     # Setup test flags based on conditions
+    #
+    # Context and input values are passed through `env` rather than interpolated
+    # directly into the script, so that a value containing shell metacharacters
+    # cannot be expanded as code.
     - name: Setup test flags
       id: setup-flags
       shell: bash
+      env:
+        PYTHON_VERSION: ${{ inputs.python-version }}
+        DEPENDENCIES: ${{ inputs.dependencies }}
+        HAS_TEST_ALL_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'test-all') }}
       run: |
         # Set CHANGED_FROM: On PRs, compare against base branch; on main, compare against HEAD~1
-        CHANGED_FROM="${{ github.base_ref && format('origin/{0}', github.base_ref) || 'HEAD~1' }}"
+        # GITHUB_BASE_REF is set (non-empty) only for pull_request events.
+        CHANGED_FROM="${GITHUB_BASE_REF:+origin/$GITHUB_BASE_REF}"
+        CHANGED_FROM="${CHANGED_FROM:-HEAD~1}"
         echo "changed_from=$CHANGED_FROM"
         echo "changed_from=$CHANGED_FROM" >> $GITHUB_OUTPUT
 
         # Set INCLUDE_UNCHANGED: true if test-all label, python 3.13 + optional deps, or main branch
-        if [[ "${{ contains(github.event.pull_request.labels.*.name, 'test-all') }}" == "true" ]] || \
-           [[ "${{ inputs.python-version }}" == "3.13" && "${{ inputs.dependencies }}" == "core,optional" ]] || \
-           [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+        if [[ "$HAS_TEST_ALL_LABEL" == "true" ]] || \
+           [[ "$PYTHON_VERSION" == "3.13" && "$DEPENDENCIES" == "core,optional" ]] || \
+           [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
           echo "include_unchanged=true"
           echo "include_unchanged=true" >> $GITHUB_OUTPUT
         else
@@ -59,15 +69,19 @@ runs:
     - name: Test changed with base dependencies
       if: ${{ inputs.dependencies == 'core' }}
       shell: bash
+      env:
+        PYTHON_VERSION: ${{ inputs.python-version }}
+        CHANGED_FROM: ${{ steps.setup-flags.outputs.changed_from }}
+        INCLUDE_UNCHANGED: ${{ steps.setup-flags.outputs.include_unchanged }}
       run: |
-        uv run --python ${{ inputs.python-version }} --group test pytest tests/ \
+        uv run --python "$PYTHON_VERSION" --group test pytest tests/ \
           -v \
           ${{ !contains(github.event.pull_request.labels.*.name, 'test-serial') && '-n auto' || '-p no:xdist' }} \
           -k "not test_cli" \
           --durations=10 \
           -p packages.pytest_changed \
-          --changed-from=${{ steps.setup-flags.outputs.changed_from }} \
-          --include-unchanged=${{ steps.setup-flags.outputs.include_unchanged }} \
+          --changed-from="$CHANGED_FROM" \
+          --include-unchanged="$INCLUDE_UNCHANGED" \
           --picked=first \
           --inline-snapshot=disable \
         || { ec=$?; [ $ec -eq 5 ] && exit 0 || exit $ec; }
@@ -76,15 +90,19 @@ runs:
     - name: Test changed with optional dependencies
       if: ${{ inputs.dependencies == 'core,optional' }}
       shell: bash
+      env:
+        PYTHON_VERSION: ${{ inputs.python-version }}
+        CHANGED_FROM: ${{ steps.setup-flags.outputs.changed_from }}
+        INCLUDE_UNCHANGED: ${{ steps.setup-flags.outputs.include_unchanged }}
       run: |
-        uv run --python ${{ inputs.python-version }} --group test-optional pytest tests/ \
+        uv run --python "$PYTHON_VERSION" --group test-optional pytest tests/ \
           -v \
           ${{ !contains(github.event.pull_request.labels.*.name, 'test-serial') && '-n auto' || '-p no:xdist' }} \
           -k "not test_cli" \
           --durations=10 \
           -p packages.pytest_changed \
-          --changed-from=${{ steps.setup-flags.outputs.changed_from }} \
-          --include-unchanged=${{ steps.setup-flags.outputs.include_unchanged }} \
+          --changed-from="$CHANGED_FROM" \
+          --include-unchanged="$INCLUDE_UNCHANGED" \
           --picked=first \
           --inline-snapshot=disable \
         || { ec=$?; [ $ec -eq 5 ] && exit 0 || exit $ec; }
@@ -97,15 +115,18 @@ runs:
       shell: bash
       env:
         UV_RESOLUTION: lowest-direct
+        PYTHON_VERSION: ${{ inputs.python-version }}
+        CHANGED_FROM: ${{ steps.setup-flags.outputs.changed_from }}
+        INCLUDE_UNCHANGED: ${{ steps.setup-flags.outputs.include_unchanged }}
       run: |
-        uv run --python ${{ inputs.python-version }} --group test pytest tests/ \
+        uv run --python "$PYTHON_VERSION" --group test pytest tests/ \
           -v \
           ${{ !contains(github.event.pull_request.labels.*.name, 'test-serial') && '-n auto' || '-p no:xdist' }} \
           -k "not test_cli" \
           --durations=10 \
           -p packages.pytest_changed \
-          --changed-from=${{ steps.setup-flags.outputs.changed_from }} \
-          --include-unchanged=${{ steps.setup-flags.outputs.include_unchanged }} \
+          --changed-from="$CHANGED_FROM" \
+          --include-unchanged="$INCLUDE_UNCHANGED" \
           --picked=first \
           --inline-snapshot=disable \
         || { ec=$?; [ $ec -eq 5 ] && exit 0 || exit $ec; }

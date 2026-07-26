@@ -34,8 +34,10 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: ⏳ Wait for PyPI package availability
+        env:
+          MARIMO_VERSION: ${{ inputs.marimo_version }}
         run: |
-          VERSION="${{ inputs.marimo_version }}"
+          VERSION="$MARIMO_VERSION"
           echo "Waiting for marimo version $VERSION to be available on PyPI..."
 
           MAX_ATTEMPTS=30
